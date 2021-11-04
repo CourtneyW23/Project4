@@ -1,10 +1,18 @@
+//https://github.com/abhinayguduri/PBRR/blob/master/PBRR.c
 #include<stdio.h>
 #include <stdlib.h>
 #include <time.h> 
+#include "shm.h"
+
 
 int main()
 {
-    int bt[20],p[20],wt[20],tat[20],pr[20],at[20],rt[20],rembt[20],i,j,n,total=0,quantum,remain,timet,pos,temp,avg_wt,avg_tat;
+    struct PCB bt[20],p[20],wt[20],tat[20],pr[20];
+    struct PCB at[20],rt[20],rbt[20];
+    int i,j,n,total=0;
+    int quantum, remain,timet,pos,temp;
+    int avg_wt,avg_tat;
+    
     printf("Enter Total Number of Process:");
     srand(time(NULL));
     for (i = 0; i < 1; i++) {

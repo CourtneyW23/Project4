@@ -1,3 +1,4 @@
+/* I was able to find bits and pieces but could not fully implement the project.*/
 #include <sys/types.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
@@ -10,81 +11,16 @@
 #include <unistd.h>
 #include <errno.h>
 #include <sys/msg.h>
+#include "oss.h"
+#include "shm.h"
 
 #define MAXINT 18
 #define MAXPCB 18
-
-union semun {   /* Used in calls to semctl() */
-      int val;
-      struct semid_ds *buf;
-      unsigned short *array;
-      #if defined(__linux__)
-      struct seminfo *__buf;
-      #endif
-};
-
-struct shmseg {
-   int cntr;
-   int write_complete;
-   int read_complete;
-};
-
-struct mesg_buffer {
-    long mesg_type;
-    char mesg_text[100];
-} message;
-
-//Process Control Block
-struct pcb{
-     pid_t pid;
-     int running; //running, not running
-     int prio;
-     int counter;
-     char *shm;
-     FILE *fp;
-     time_t totalCPUtime;
-     time_t totalTimeinSys;
-     time_t lastBurst;
-
-};
-
 
 pid_t r_wait(int *stat_loc) {
    pid_t retval;
    while (((retval = wait(stat_loc)) == -1) && (errno == EINTR)) ;
    return retval;
-}
-
-
-void logmsg(const char *msg){
-        FILE *f;
-        char *log;
-        int i;
-        time_t t;
-        char *tm;
-	
-	//msg = argv[2];
-
-        t = time(NULL);
-        tm = ctime(&t);
-
-        f = fopen(msg, "a");
-        if(!f)
-        {
-                perror("Error opening file: ");
-                exit(0);
-        }
-
-        if(log == NULL)
-        {
-                printf("Empty Log\n");
-                exit(0);
-        }
-        log = tm;
-
-        fprintf(f, "%s\n", log);
-        fclose(f);
-
 }
 
 static void handler(int sig)
@@ -95,33 +31,22 @@ static void handler(int sig)
    exit(1);
 }
 
-
 int main(int argc, char *argv[]){
     int shmid, count;
     int i, status, exit_status, n;
     int val, opt, timer = 100;
-    union semun arg;
-    struct sembuf sop[1];
     char *shmp;
-
-    time_t t;
-    char *tm;
-  
-    char **myargv;
-    pid_t child, grandchild;
+    pid_t child;
     struct sigaction sa;
-    char *stuff = "stupid";
     extern char *optarg;
-
     FILE *fp;
+    char buff[50];
     //int running = 1;
     int msgid;
 
-    t = time(NULL);
-    tm = ctime(&t);
-
-
     setbuf(stdout, NULL); 
+
+    //strncpy(buff, "logfile.txt", sizeof(buff));
 
     while ((opt = getopt(argc, argv, "hs:l:")) != -1) {
 		switch (opt) {
@@ -136,19 +61,20 @@ int main(int argc, char *argv[]){
 				timer = atoi(optarg);
 				break;
 			case 'l':
-				fp = fopen(optarg, "w");
-				if (sizeof(fp > MAXINT))
-					perror("file limit exceeded");		
-				fprintf(fp, tm, "\n");
-            			if (fp == NULL)
-                			perror("fopen");
-            			setbuf(fp, NULL);
-	    			fclose(fp);
+				strncpy(buff, optarg, sizeof(buff));
 				break;
 			default:
-				perror("getopt");
+				perror("getopt failure");
 				exit(1);
 		}
+	}
+
+    // open log file for writing
+	fp = fopen(buff,"w+");
+
+	if (fp == NULL) {
+		perror("Cannot open log file");
+		exit(1);
 	}
 
      sigemptyset(&sa.sa_mask);
@@ -172,8 +98,9 @@ int main(int argc, char *argv[]){
      if (shmp == (void *) -1)
          perror("shmat");
 
-
-     printf("Data read from memory: %s\n",shmp);
+     //write shared memory to a file
+     fprintf(fp,"Data read from memory: %s\n",shmp);
+     
      shmdt(shmp);
      if (shmctl(shmid, IPC_RMID, 0) == -1)
          perror("shmctl");
@@ -184,8 +111,8 @@ int main(int argc, char *argv[]){
     // msgrcv to receive message
     msgrcv(msgid, &message, sizeof(message), 1, 0);
 
-    // display the message
-    printf("Data Received is : %s\n", message.mesg_text);
+    // write the message to a file
+    fprintf(fp,"Data Received is : %s\n", message.mesg_text);
 
     // to destroy the message queue
     msgctl(msgid, IPC_RMID, NULL);

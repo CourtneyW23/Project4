@@ -1,1 +1,4 @@
-Sat Oct 30 18:49:45 2021
+Data read from memory: WORKING!!!
+
+Data Received is : i
+
